@@ -1073,6 +1073,9 @@ public abstract class Node implements EventTarget, Styleable {
             focusSetDirty(oldScene);
             focusSetDirty(newScene);
         }
+        
+        if (sceneChanged) reapplyCSS(false);
+        
         scenesChanged(newScene, newSubScene, oldScene, oldSubScene);
 
         // isTreeShowing needs to take into account of Window's showing
@@ -1083,8 +1086,6 @@ public abstract class Node implements EventTarget, Styleable {
             newScene.windowProperty().addListener(sceneWindowChangedListener);
         }
         updateTreeShowing();
-
-        if (sceneChanged) reapplyCSS();
 
         if (sceneChanged && !isDirtyEmpty()) {
             //Note: no need to remove from scene's dirty list
@@ -9402,8 +9403,12 @@ public abstract class Node implements EventTarget, Styleable {
             }
         }
     }
-
+    
     final void reapplyCSS() {
+        reapplyCSS(true);
+    }
+
+    private void reapplyCSS(boolean reapplyChildren) {
 
         if (getScene() == null) return;
 
@@ -9416,7 +9421,7 @@ public abstract class Node implements EventTarget, Styleable {
             return;
         }
 
-        reapplyCss();
+        reapplyCss(reapplyChildren);
 
         //
         // One idiom employed by developers is to, during the layout pass,
@@ -9444,7 +9449,7 @@ public abstract class Node implements EventTarget, Styleable {
     // There is no check of the CSS state of a child since reapply takes precedence
     // over other CSS states.
     //
-    private void reapplyCss() {
+    private void reapplyCss(boolean reapplyChildren) {
 
         // Hang on to current styleHelper so we can know whether
         // createStyleHelper returned the same styleHelper
@@ -9456,7 +9461,7 @@ public abstract class Node implements EventTarget, Styleable {
         styleHelper = CssStyleHelper.createStyleHelper(this);
 
         // REAPPLY to my children, too.
-        if (this instanceof Parent) {
+        if (this instanceof Parent && reapplyChildren) {
 
             // minor optimization to avoid calling createStyleHelper on children
             // when we know there will not be any change in the style maps.
@@ -9482,7 +9487,7 @@ public abstract class Node implements EventTarget, Styleable {
                 List<Node> children = ((Parent) this).getChildren();
                 for (int n = 0, nMax = children.size(); n < nMax; n++) {
                     Node child = children.get(n);
-                    child.reapplyCss();
+                    child.reapplyCss(true);
                 }
             }
 
@@ -9491,7 +9496,7 @@ public abstract class Node implements EventTarget, Styleable {
             // SubScene root is a Parent, but reapplyCss is a private method in Node
             final Node subSceneRoot = ((SubScene)this).getRoot();
             if (subSceneRoot != null) {
-                subSceneRoot.reapplyCss();
+                subSceneRoot.reapplyCss(true);
             }
 
         } else if (styleHelper == null) {
@@ -9635,7 +9640,7 @@ public abstract class Node implements EventTarget, Styleable {
 
         // if REAPPLY was deferred, process it now...
         if (cssFlag == CssFlags.REAPPLY) {
-            reapplyCss();
+            reapplyCss(true);
         }
 
         // Clear the flag first in case the flag is set to something
