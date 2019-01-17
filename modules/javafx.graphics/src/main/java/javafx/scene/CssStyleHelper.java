@@ -1546,19 +1546,27 @@ final class CssStyleHelper {
         // there is a parent helper and a cacheContainer,
         } else  {
 
+            Set<PseudoClass>[] transitionStates = parentHelper.getTransitionStates(parent);
+            StyleCacheEntry.Key parentCacheEntryKey = new StyleCacheEntry.Key(transitionStates, Font.getDefault());
             CacheContainer parentCacheContainer = parentHelper.cacheContainer;
             if ( parentCacheContainer != null
                     && parentCacheContainer.fontSizeCache != null
                     && parentCacheContainer.fontSizeCache.isEmpty() == false) {
 
-                Set<PseudoClass>[] transitionStates = parentHelper.getTransitionStates(parent);
-                StyleCacheEntry.Key parentCacheEntryKey = new StyleCacheEntry.Key(transitionStates, Font.getDefault());
                 cachedFont = parentCacheContainer.fontSizeCache.get(parentCacheEntryKey);
             }
 
             if (cachedFont == null)  {
                 StyleMap smap = parentHelper.getStyleMap(parent);
                 cachedFont = parentHelper.lookupFont(parent, "-fx-font", smap, null);
+                
+                if (parentCacheContainer != null) {
+                    //The same caching as transitionToState()
+                    CalculatedValue toCache = cachedFont;
+                    if (toCache == SKIP) toCache = getCachedFont(parent.getStyleableParent());
+                    if (toCache == null) toCache = new CalculatedValue(Font.getDefault(), null, false);
+                    parentCacheContainer.fontSizeCache.put(parentCacheEntryKey,toCache);
+                }
             }
         }
 
