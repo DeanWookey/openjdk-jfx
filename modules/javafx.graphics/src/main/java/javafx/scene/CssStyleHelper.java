@@ -75,7 +75,7 @@ import static com.sun.javafx.css.CalculatedValue.*;
  * The StyleHelper is a helper class used for applying CSS information to Nodes.
  */
 final class CssStyleHelper {
-
+    static HashMap<Styleable, CalculatedValue> staticStore = new HashMap<>();
     private static final PlatformLogger LOGGER = com.sun.javafx.util.Logging.getCSSLogger();
 
     private CssStyleHelper() {
@@ -515,10 +515,9 @@ final class CssStyleHelper {
      */
     // TODO: this should work on Styleable, not Node
     private Set<PseudoClass>[] getTransitionStates(final Node node) {
-
+        
         // if cacheContainer is null, then CSS just doesn't apply to this node
         if (cacheContainer == null) return null;
-
         int depth = 0;
         Node parent = node;
         while (parent != null) {
@@ -563,7 +562,6 @@ final class CssStyleHelper {
 
         final Set<PseudoClass>[] transitionStates = new PseudoClassState[count];
         System.arraycopy(retainedStates, 0, transitionStates, 0, count);
-
         return transitionStates;
 
     }
@@ -612,20 +610,7 @@ final class CssStyleHelper {
         }
 
         final Set<PseudoClass>[] transitionStates = getTransitionStates(node);
-
-        final StyleCacheEntry.Key fontCacheKey = new StyleCacheEntry.Key(transitionStates, Font.getDefault());
-        CalculatedValue cachedFont = cacheContainer.fontSizeCache.get(fontCacheKey);
-
-        if (cachedFont == null) {
-
-            cachedFont = lookupFont(node, "-fx-font", styleMap, cachedFont);
-
-            if (cachedFont == SKIP) cachedFont = getCachedFont(node.getStyleableParent());
-            if (cachedFont == null) cachedFont = new CalculatedValue(Font.getDefault(), null, false);
-
-            cacheContainer.fontSizeCache.put(fontCacheKey,cachedFont);
-
-        }
+        CalculatedValue cachedFont = lookupFontCached(node, "-fx-font", styleMap, transitionStates);
 
         final Font fontForRelativeSizes = (Font)cachedFont.getValue();
 
@@ -647,7 +632,6 @@ final class CssStyleHelper {
 
         final boolean isForceSlowpath = cacheContainer.forceSlowpath;
         cacheContainer.forceSlowpath = false;
-
         // For each property that is settable, we need to do a lookup and
         // transition to that value.
         for(int n=0; n<max; n++) {
@@ -686,7 +670,6 @@ final class CssStyleHelper {
                 }
 
             } else if (calculatedValue == null) {
-
                 // slowpath!
                 calculatedValue = lookup(node, cssMetaData, styleMap, transitionStates[0],
                         node, cachedFont);
@@ -1527,7 +1510,9 @@ final class CssStyleHelper {
     };
 
     private CalculatedValue getCachedFont(final Styleable styleable) {
-
+        //if (store.containsKey(styleable)) {
+            //return store.get(styleable);
+        //}
         if (styleable instanceof Node == false) return null;
 
         CalculatedValue cachedFont = null;
@@ -1546,23 +1531,25 @@ final class CssStyleHelper {
         // there is a parent helper and a cacheContainer,
         } else  {
 
-            CacheContainer parentCacheContainer = parentHelper.cacheContainer;
-            if ( parentCacheContainer != null
-                    && parentCacheContainer.fontSizeCache != null
-                    && parentCacheContainer.fontSizeCache.isEmpty() == false) {
-
-                Set<PseudoClass>[] transitionStates = parentHelper.getTransitionStates(parent);
-                StyleCacheEntry.Key parentCacheEntryKey = new StyleCacheEntry.Key(transitionStates, Font.getDefault());
-                cachedFont = parentCacheContainer.fontSizeCache.get(parentCacheEntryKey);
-            }
+//            CacheContainer parentCacheContainer = parentHelper.cacheContainer;
+//            if ( parentCacheContainer != null
+//                    && parentCacheContainer.fontSizeCache != null
+//                    && parentCacheContainer.fontSizeCache.isEmpty() == false) {
+//
+//                Set<PseudoClass>[] transitionStates = parentHelper.getTransitionStates(parent);
+//                StyleCacheEntry.Key parentCacheEntryKey = new StyleCacheEntry.Key(transitionStates, Font.getDefault());
+//                cachedFont = parentCacheContainer.fontSizeCache.get(parentCacheEntryKey);
+//            }
 
             if (cachedFont == null)  {
                 StyleMap smap = parentHelper.getStyleMap(parent);
-                cachedFont = parentHelper.lookupFont(parent, "-fx-font", smap, null);
+                cachedFont = parentHelper.lookupFontCached(parent, "-fx-font", smap);
             }
         }
-
-        return cachedFont != SKIP ? cachedFont : null;
+        
+        CalculatedValue val = cachedFont != SKIP ? cachedFont : null;
+        //store.put(styleable, val);
+        return val;
     }
 
     /*package access for testing*/ FontPosture getFontPosture(Font font) {
@@ -1634,6 +1621,34 @@ final class CssStyleHelper {
                 fontPosture,
                 fontSize);
     }
+    
+    CalculatedValue lookupFontCached(
+            final Styleable styleable,
+            final String property,
+            final StyleMap styleMap)
+    {
+        Node node = (Node)styleable;
+        final Set<PseudoClass>[] transitionStates = getTransitionStates(node);
+        return lookupFontCached(styleable, property, styleMap, transitionStates);
+    }
+    
+        CalculatedValue lookupFontCached(
+            final Styleable styleable,
+            final String property,
+            final StyleMap styleMap,
+            final Set<PseudoClass>[] transitionStates)
+    {
+        final StyleCacheEntry.Key fontCacheKey = new StyleCacheEntry.Key(transitionStates, Font.getDefault());
+        CalculatedValue cached = cacheContainer.fontSizeCache.get(fontCacheKey);
+        if (cached == null) {
+            cached = lookupFont(styleable, property, styleMap, null);
+            if (cached == SKIP) cached = getCachedFont(styleable.getStyleableParent());
+            if (cached == null) cached = new CalculatedValue(Font.getDefault(), null, false);
+            cacheContainer.fontSizeCache.put(fontCacheKey, cached);
+        }
+        return cached;
+    }
+    
 
     /**
      * Look up a font property. This is handled separately from lookup since

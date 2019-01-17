@@ -573,6 +573,7 @@ public class Scene implements EventTarget {
     void doLayoutPass() {
         final Parent r = getRoot();
         if (r != null) {
+            CssStyleHelper.staticStore = new HashMap<>();
             r.layout();
         }
     }

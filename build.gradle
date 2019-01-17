@@ -1534,10 +1534,10 @@ void addMavenPublication(Project project, List<String> projectDependencies) {
                 def repositoryUsername = project.hasProperty('repositoryUsername') ? project.getProperty('repositoryUsername') : ""
                 def repositoryPassword = project.hasProperty('repositoryPassword') ? project.getProperty('repositoryPassword') : ""
                 url repositoryUrl
-                credentials {
-                   username repositoryUsername
-                   password repositoryPassword
-                }
+                //credentials {
+                //   username repositoryUsername
+                //   password repositoryPassword
+                //}
             }
         }
     }
@@ -1552,6 +1552,9 @@ void addMavenPublication(Project project, List<String> projectDependencies) {
                     artifact project.tasks."modularPublicationJar$t.capital" {
                         classifier "$t.name"
                     }
+					artifact project.tasks."modularSourcePublicationJar$t.capital" {
+						classifier "sources"
+					}
 
                     pom.withXml {
                         Node parent = asNode().appendNode("parent")
@@ -4423,6 +4426,14 @@ compileTargets { t ->
             archiveName = modularPublicationJarName
             from srcLibsDir
             from srcClassesDir
+        }
+		
+		def modularSourcePublicationJarName = "${moduleName}-sources.jar"
+        def modularSourcePublicationJarTask = project.task("modularSourcePublicationJar${t.capital}", type: Jar) {
+            destinationDir = file("${dstModularJarDir}")
+            archiveName = modularSourcePublicationJarName
+			from "${project.projectDir}/src/main/java"
+            include "**/*.java"
         }
 
         buildModulesTask.dependsOn(modularPublicationJarTask)

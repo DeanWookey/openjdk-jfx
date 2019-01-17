@@ -55,5 +55,5 @@ if ($env:APPVEYOR -eq "true") {
     exit $lastexitcode
   }
 } else {
-  .\gradlew all test -PCOMPILE_WEBKIT=false -PCONF=Debug --stacktrace -x :web:test --info --no-daemon
+  .\gradlew build -PCOMPILE_WEBKIT=false -PCONF=Debug --stacktrace -x :web:test --info --no-daemon
 }
