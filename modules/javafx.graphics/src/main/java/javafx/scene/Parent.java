@@ -292,6 +292,9 @@ public abstract class Parent extends Node {
     // Call this method if children view order is needed for picking.
     // The returned list should be treated as read only.
     private List<Node> getOrderedChildren() {
+        if (isDirty(DirtyBits.PARENT_CHILDREN_VIEW_ORDER)) {
+            computeViewOrderChidrenAndUpdatePeer();
+        }
         if (!viewOrderChildren.isEmpty()) {
             return viewOrderChildren;
         }
