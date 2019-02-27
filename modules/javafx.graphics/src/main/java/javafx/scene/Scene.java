@@ -2580,12 +2580,14 @@ public class Scene implements EventTarget {
         public void mouseEvent(EventType<MouseEvent> type, double x, double y, double screenX, double screenY,
                                MouseButton button, boolean popupTrigger, boolean synthesized,
                                boolean shiftDown, boolean controlDown, boolean altDown, boolean metaDown,
-                               boolean primaryDown, boolean middleDown, boolean secondaryDown)
+                               boolean primaryDown, boolean middleDown, boolean secondaryDown,
+                               boolean backDown, boolean forwardDown)
         {
             MouseEvent mouseEvent = new MouseEvent(type, x, y, screenX, screenY, button,
                     0, // click count will be adjusted by clickGenerator later anyway
                     shiftDown, controlDown, altDown, metaDown,
-                    primaryDown, middleDown, secondaryDown, synthesized, popupTrigger, false, null);
+                    primaryDown, middleDown, secondaryDown, backDown, forwardDown,
+                    synthesized, popupTrigger, false, null);
             processMouseEvent(mouseEvent);
         }
 
@@ -3519,7 +3521,8 @@ public class Scene implements EventTarget {
                 if (! e.isPrimaryButtonDown()) { counters.get(MouseButton.PRIMARY).clear(); }
                 if (! e.isSecondaryButtonDown()) { counters.get(MouseButton.SECONDARY).clear(); }
                 if (! e.isMiddleButtonDown()) { counters.get(MouseButton.MIDDLE).clear(); }
-
+                if (! e.isBackButtonDown()) { counters.get(MouseButton.BACK).clear(); }
+                if (! e.isForwardButtonDown()) { counters.get(MouseButton.FORWARD).clear(); }
                 cc.applyOut();
                 cc.inc();
                 cc.start(e.getSceneX(), e.getSceneY());
@@ -3531,6 +3534,7 @@ public class Scene implements EventTarget {
                     cc != null && e.getEventType() != MouseEvent.MOUSE_MOVED ? cc.get() : 0,
                     e.isShiftDown(), e.isControlDown(), e.isAltDown(), e.isMetaDown(),
                     e.isPrimaryButtonDown(), e.isMiddleButtonDown(), e.isSecondaryButtonDown(),
+                    e.isBackButtonDown(), e.isForwardButtonDown(),
                     e.isSynthesized(), e.isPopupTrigger(), still, e.getPickResult());
         }
 
@@ -3561,6 +3565,7 @@ public class Scene implements EventTarget {
                             cc.get(),
                             e.isShiftDown(), e.isControlDown(), e.isAltDown(), e.isMetaDown(),
                             e.isPrimaryButtonDown(), e.isMiddleButtonDown(), e.isSecondaryButtonDown(),
+                            e.isBackButtonDown(), e.isForwardButtonDown(),
                             e.isSynthesized(), e.isPopupTrigger(), lastPress.isStill(), e.getPickResult());
                     Event.fireEvent(clickedTarget, click);
                 }
@@ -3589,6 +3594,8 @@ public class Scene implements EventTarget {
         private boolean primaryButtonDown = false;
         private boolean secondaryButtonDown = false;
         private boolean middleButtonDown = false;
+        private boolean backButtonDown = false;
+        private boolean forwardButtonDown = false;
 
         private EventTarget fullPDRSource = null;
         private TargetWrapper fullPDRTmpTargetWrapper = new TargetWrapper();
@@ -3781,7 +3788,8 @@ public class Scene implements EventTarget {
             boolean gestureStarted = false;
             if (!onPulse) {
                 if (e.getEventType() == MouseEvent.MOUSE_PRESSED) {
-                    if (!(primaryButtonDown || secondaryButtonDown || middleButtonDown)) {
+                    if (!(primaryButtonDown || secondaryButtonDown || middleButtonDown ||
+                            backButtonDown || forwardButtonDown)) {
                         //old gesture ended and new one started
                         gestureStarted = true;
                         if (!PLATFORM_DRAG_GESTURE_INITIATION) {
@@ -3801,6 +3809,8 @@ public class Scene implements EventTarget {
                 primaryButtonDown = e.isPrimaryButtonDown();
                 secondaryButtonDown = e.isSecondaryButtonDown();
                 middleButtonDown = e.isMiddleButtonDown();
+                backButtonDown = e.isBackButtonDown();
+                forwardButtonDown = e.isForwardButtonDown();
             }
 
             pick(tmpTargetWrapper, e.getSceneX(), e.getSceneY());
@@ -3810,6 +3820,7 @@ public class Scene implements EventTarget {
                     e.getScreenX(), e.getScreenY(), e.getButton(), e.getClickCount(),
                     e.isShiftDown(), e.isControlDown(), e.isAltDown(), e.isMetaDown(),
                     e.isPrimaryButtonDown(), e.isMiddleButtonDown(), e.isSecondaryButtonDown(),
+                    e.isBackButtonDown(), e.isForwardButtonDown(),
                     e.isSynthesized(), e.isPopupTrigger(), e.isStillSincePress(), res);
             }
 
@@ -3886,7 +3897,8 @@ public class Scene implements EventTarget {
             }
 
             if (pdrInProgress &&
-                    !(primaryButtonDown || secondaryButtonDown || middleButtonDown)) {
+                    !(primaryButtonDown || secondaryButtonDown || middleButtonDown ||
+                            backButtonDown || forwardButtonDown)) {
                 clearPDREventTargets();
                 exitFullPDR(e);
                 // we need to do new picking in case the originally picked node

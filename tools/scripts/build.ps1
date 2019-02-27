@@ -1,3 +1,8 @@
+param (
+[switch]$nocygwin = $false,
+[parameter(ValueFromRemainingArguments)][String[]]$args
+)
+
 choco install ant
 choco install vswhere
 choco install zip
@@ -18,14 +23,18 @@ if ([string]::IsNullOrWhitespace($vsRoot)) {
 $winSdk = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows Kits\Installed Roots").KitsRoot10 2>$null
 if ([string]::IsNullOrWhitespace($winSdk)) {
   choco install windows-sdk-7.1
-  $winSdk = ((Get-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows Kits\Installed Roots" -ErrorAction Stop).KitsRoot10) 
+  $winSdk = ((Get-ItemProperty -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows Kits\Installed Roots" -ErrorAction Stop).KitsRoot10)
 }
 
 # Cygwin required for chmod
-$cygwinPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Cygwin\setup").rootdir 2>$null
-if ([string]::IsNullOrWhitespace($cygwinPath)) {
-  choco install cygwin
-  $cygwinPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Cygwin\setup"  -ErrorAction Stop).rootdir
+if ($nocygwin -eq $false) {
+  $cygwinPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Cygwin\setup").rootdir 2>$null
+  if ([string]::IsNullOrWhitespace($cygwinPath)) {
+    choco install cygwin
+    $cygwinPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Cygwin\setup"  -ErrorAction Stop).rootdir
+  }
+} else {
+  Write-Output "Skipping cygwin install!"
 }
 
 if ($env:Path -NotLike "*$($cygwinPath)*") {
@@ -55,5 +64,9 @@ if ($env:APPVEYOR -eq "true") {
     exit $lastexitcode
   }
 } else {
-  .\gradlew build -PCOMPILE_WEBKIT=false -PCONF=Debug --stacktrace -x :web:test --info --no-daemon
+  if ($noCygwin) {
+    .\gradlew all test -PCOMPILE_WEBKIT=false -PCONF=Debug -PUSE_CYGWIN=false --stacktrace -x :web:test --info --no-daemon $args
+  } else {
+    .\gradlew all test -PCOMPILE_WEBKIT=false -PCONF=Debug --stacktrace -x :web:test --info --no-daemon $args
+  }
 }
